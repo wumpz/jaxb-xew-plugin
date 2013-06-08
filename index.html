@@ -1,0 +1,492 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Jaxb-xew-plugin by wumpz</title>
+
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>Jaxb-xew-plugin</h1>
+        <p>JAXB @XmlElementWrapper Plugin</p>
+
+        <p class="view"><a href="https://github.com/wumpz/jaxb-xew-plugin">View the Project on GitHub <small>wumpz/jaxb-xew-plugin</small></a></p>
+
+
+        <ul>
+          <li><a href="https://github.com/wumpz/jaxb-xew-plugin/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/wumpz/jaxb-xew-plugin/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/wumpz/jaxb-xew-plugin">View On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
+        <h1>
+<a name="jaxb-xmlelementwrapper-plugin" class="anchor" href="#jaxb-xmlelementwrapper-plugin"><span class="octicon octicon-link"></span></a>JAXB @XmlElementWrapper Plugin</h1>
+
+<h2>
+<a name="description" class="anchor" href="#description"><span class="octicon octicon-link"></span></a>Description</h2>
+
+<p>This JAXB plugin utilises the power of <code>@XmlElementWrapper</code> annotation. Originally <code>xjc</code> trends to create wrapper classes which are the containers for collections. This plugin goes through all properties to find ones which can be represented in the model in more optimal way.</p>
+
+<h2>
+<a name="the-problem-origin-in-details" class="anchor" href="#the-problem-origin-in-details"><span class="octicon octicon-link"></span></a>The problem origin in details</h2>
+
+<p>To illustrate the problem let's take the following XSD:</p>
+
+<pre><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;xs:schema
+    xmlns:xs="http://www.w3.org/2001/XMLSchema"
+    xmlns:xml="http://www.w3.org/XML/1998/namespace"
+    elementFormDefault="qualified"&gt;
+
+    &lt;xs:element name="order"&gt;
+        &lt;xs:complexType&gt;
+            &lt;xs:sequence&gt;
+                &lt;xs:element ref="items" /&gt;
+            &lt;/xs:sequence&gt;
+        &lt;/xs:complexType&gt;
+    &lt;/xs:element&gt;
+
+    &lt;xs:element name="items"&gt;
+        &lt;xs:complexType&gt;
+            &lt;xs:sequence&gt;
+                &lt;xs:element name="item" type="xs:string" maxOccurs="unbounded" /&gt;
+            &lt;/xs:sequence&gt;
+        &lt;/xs:complexType&gt;
+    &lt;/xs:element&gt;
+&lt;/xs:schema&gt;
+</code></pre>
+
+<p>From this XSD by default <code>xjc</code> will generate two classes:</p>
+
+<pre><code>@XmlAccessorType(XmlAccessType.FIELD)
+@XmlType(name = "", propOrder = { "items" })
+@XmlRootElement(name = "order")
+public class Order {
+
+    @XmlElement(required = true)
+    protected Items items;
+
+    public Items getItems() {
+        return items;
+    }
+
+    public void setItems(Items value) {
+        this.items = value;
+    }
+}
+</code></pre>
+
+<p>and</p>
+
+<pre><code>@XmlAccessorType(XmlAccessType.FIELD)
+@XmlType(name = "", propOrder = { "item" })
+@XmlRootElement(name = "items")
+public class Items {
+
+    @XmlElement(required = true)
+    protected List&lt;String&gt;  item;
+
+    public List&lt;String&gt; getItem() {
+        if (item == null) {
+            item = new ArrayList&lt;String&gt;();
+        }
+        return this.item;
+    }
+}
+</code></pre>
+
+<p>So to access a particular item one need to write a but clumsy code <code>order.getItems().getItems().get(itemIndex)</code>. The solution is to use <code>@XmlElementWrapper</code> which cures exactly this case. The result will be only one class with direct access to items:</p>
+
+<pre><code>@XmlAccessorType(XmlAccessType.FIELD)
+@XmlType(name = "", propOrder = { "items" })
+@XmlRootElement(name = "order")
+public class Order {
+
+    @XmlElementWrapper(name = "items", required = true)
+    @XmlElement(name = "item")
+    protected List&lt;String&gt;  items;
+
+    public List&lt;String&gt; getItems() {
+        if (items == null) {
+            items = new ArrayList&lt;String&gt;();
+        }
+        return items;
+    }
+
+    public void setItems(List&lt;String&gt; items) {
+        this.items = items;
+    }
+}
+</code></pre>
+
+<h2>
+<a name="usage" class="anchor" href="#usage"><span class="octicon octicon-link"></span></a>Usage</h2>
+
+<p>The plugin is used together with the <code>xjc</code> from the command line or from an Ant task or via <code>maven-jaxb2-plugin</code>.</p>
+
+<p>The following options are applicable for plugin:</p>
+
+<table>
+<tr>
+<th>Option</th>
+    <th>Comment</th>
+</tr>
+<tr>
+<td>-Xxew</td>
+    <td>Activate the XML Element Wrapper plugin</td>
+</tr>
+<tr>
+<td>-Xxew:include filename</td>
+    <td>Specify a filename with candidate classes to include in the compilation.</td>
+</tr>
+<tr>
+<td>-Xxew:exclude filename</td>
+    <td>Specify a filename with candidate classes to exclude from the compilation.</td>
+</tr>
+<tr>
+<td>-Xxew:summary filename</td>
+    <td>Specify a filename to contain summary information on the compilation.</td>
+</tr>
+<tr>
+<td>-Xxew:collection FQCN</td>
+    <td>Specify the class name of the collection type to use.</td>
+</tr>
+<tr>
+<td>-Xxew:instantiate [lazy|early]</td>
+    <td>Specify when the collection class should be instantiated.</td>
+</tr>
+<tr>
+<td>-Xxew:delete</td>
+    <td>Delete candidate classes having been replaced during compilation.</td>
+</tr>
+</table><h3>
+<a name="episode-file" class="anchor" href="#episode-file"><span class="octicon octicon-link"></span></a>Episode file</h3>
+
+<p>For correct generation of episode file, the corresponding options should follow <code>-Xxew</code>, for example:</p>
+
+<p><code>-Xxew ... -episode &lt;file&gt;</code></p>
+
+<p>This will trigger episode plugin after Xew plugin.</p>
+
+<h3>
+<a name="fluent-api-and-value-constructor-plugins" class="anchor" href="#fluent-api-and-value-constructor-plugins"><span class="octicon octicon-link"></span></a><code>fluent-api</code> and <code>value-constructor</code> plugins</h3>
+
+<p>These plugins should be activated after Xew plugin:</p>
+
+<p><code>-Xxew ... -Xfluent-api -Xvalue-constructor</code> </p>
+
+<p>Otherwise if they are activated before Xew plugin cannot revert the changes they made.</p>
+
+<h3>
+<a name="ant-task" class="anchor" href="#ant-task"><span class="octicon octicon-link"></span></a>Ant task</h3>
+
+<p>First you need to download the plugin jar (for example, from <a href="http://mirrors.ibiblio.org/pub/mirrors/maven2/com/github/jaxb-xew-plugin/jaxb-xew-plugin">Maven repository</a>) and put it to your project <code>lib</code> folder.</p>
+
+<p>To use the plugin from Ant you will need something like the following in your build file:</p>
+
+<pre><code>&lt;taskdef name="xjc" classname="com.sun.tools.xjc.XJCTask"&gt;
+    &lt;classpath&gt;
+        &lt;fileset dir="${lib}/jaxb" includes="*.jar" /&gt;
+        &lt;fileset dir="lib" includes="jaxb-xew-plugin.jar" /&gt;
+    &lt;/classpath&gt;
+&lt;/taskdef&gt;
+
+&lt;xjc destdir="${src-generated}" package="dk.conspicio.example.xml2code.v2"&gt;
+    &lt;arg value="-Xxew" /&gt;
+    &lt;arg value="-Xxew:summary ${build}/xew-summary.txt" /&gt;
+    &lt;arg value="-Xxew:instantiate lazy" /&gt;
+    &lt;schema dir="xsd" includes="*.xsd" /&gt;
+    &lt;binding dir="xsd" includes="*.xjb" /&gt;
+&lt;/xjc&gt;
+</code></pre>
+
+<h3>
+<a name="maven" class="anchor" href="#maven"><span class="octicon octicon-link"></span></a>Maven</h3>
+
+<h4>
+<a name="maven-jaxb2-plugin" class="anchor" href="#maven-jaxb2-plugin"><span class="octicon octicon-link"></span></a>maven-jaxb2-plugin</h4>
+
+<p>Note: <code>maven-jaxb2-plugin</code> prior to v0.8.0 was compiled against JAXB XJC API which is not compatible with this plugin. Version 0.8.1 is guaranteed to work, versions 0.8.2 and 0.8.3 should also work fine.</p>
+
+<pre><code>&lt;plugin&gt;
+    &lt;groupId&gt;org.jvnet.jaxb2.maven2&lt;/groupId&gt;
+    &lt;artifactId&gt;maven-jaxb2-plugin&lt;/artifactId&gt;
+    &lt;version&gt;0.8.1&lt;/version&gt;
+    &lt;executions&gt;
+        &lt;execution&gt;
+            &lt;phase&gt;generate-sources&lt;/phase&gt;
+            &lt;goals&gt;
+                &lt;goal&gt;generate&lt;/goal&gt;
+            &lt;/goals&gt;
+            &lt;configuration&gt;
+                &lt;verbose&gt;true&lt;/verbose&gt;
+                &lt;generateDirectory&gt;${project.build.sourceDirectory}&lt;/generateDirectory&gt;
+                &lt;schemaDirectory&gt;xsd&lt;/schemaDirectory&gt;
+                &lt;removeOldOutput&gt;false&lt;/removeOldOutput&gt;
+                &lt;episode&gt;false&lt;/episode&gt;
+
+                &lt;extension&gt;true&lt;/extension&gt;
+                &lt;args&gt;
+                    &lt;arg&gt;-no-header&lt;/arg&gt;
+                    &lt;arg&gt;-Xxew&lt;/arg&gt;
+                    &lt;arg&gt;-Xxew:instantiate lazy&lt;/arg&gt;
+                    &lt;arg&gt;-Xxew:delete&lt;/arg&gt;
+                &lt;/args&gt;
+                &lt;plugins&gt;
+                    &lt;plugin&gt;
+                        &lt;groupId&gt;com.github.jaxb-xew-plugin&lt;/groupId&gt;
+                        &lt;artifactId&gt;jaxb-xew-plugin&lt;/artifactId&gt;
+                        &lt;version&gt;1.0&lt;/version&gt;
+                    &lt;/plugin&gt;
+                &lt;/plugins&gt;
+            &lt;/configuration&gt;
+        &lt;/execution&gt;
+    &lt;/executions&gt;
+&lt;/plugin&gt;
+</code></pre>
+
+<h4>
+<a name="jaxb2-maven-plugin" class="anchor" href="#jaxb2-maven-plugin"><span class="octicon octicon-link"></span></a>jaxb2-maven-plugin</h4>
+
+<p>Note: <code>jaxb2-maven-plugin</code> v1.5 was compiled against JAXB XJC API v2.1.13 which is not compatible with this plugin, thus additional dependency is needed to be added to <strong>plugin classpath</strong>.</p>
+
+<pre><code>&lt;plugin&gt;
+    &lt;groupId&gt;org.codehaus.mojo&lt;/groupId&gt;
+    &lt;artifactId&gt;jaxb2-maven-plugin&lt;/artifactId&gt;
+    &lt;version&gt;1.5&lt;/version&gt;
+    &lt;executions&gt;
+        &lt;execution&gt;
+            &lt;phase&gt;generate-sources&lt;/phase&gt;
+            &lt;goals&gt;
+                &lt;goal&gt;xjc&lt;/goal&gt;
+            &lt;/goals&gt;
+            &lt;configuration&gt;
+                &lt;verbose&gt;true&lt;/verbose&gt;
+                &lt;outputDirectory&gt;${project.build.sourceDirectory}&lt;/outputDirectory&gt;
+                &lt;schemaDirectory&gt;xsd&lt;/schemaDirectory&gt;
+                &lt;clearOutputDir&gt;false&lt;/clearOutputDir&gt;
+
+                &lt;extension&gt;true&lt;/extension&gt;
+                &lt;arguments&gt;-no-header -Xxew -Xxew:instantiate lazy -Xxew:delete&lt;/arguments&gt;
+            &lt;/configuration&gt;
+        &lt;/execution&gt;
+    &lt;/executions&gt;
+    &lt;dependencies&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;com.github.jaxb-xew-plugin&lt;/groupId&gt;
+            &lt;artifactId&gt;jaxb-xew-plugin&lt;/artifactId&gt;
+            &lt;version&gt;1.0&lt;/version&gt;
+        &lt;/dependency&gt;
+        &lt;!-- 
+         | We need to update the jaxb-xjc plugin version from 2.1.13 to the 2.2.4-1 version 
+         | used by the jaxb-xew-plugin (version 2.1.13 which does not have the required 
+         | method com.suun.codemodel.JAnnotatable.annotations()Ljava/util/Collection).
+         --&gt;
+        &lt;dependency&gt;
+            &lt;groupId&gt;com.sun.xml.bind&lt;/groupId&gt;
+            &lt;artifactId&gt;jaxb-xjc&lt;/artifactId&gt;
+            &lt;version&gt;2.2.4-1&lt;/version&gt;
+        &lt;/dependency&gt;
+    &lt;/dependencies&gt;
+&lt;/plugin&gt;
+</code></pre>
+
+<p>You can find more examples of this plugin in <a href="samples/"><code>samples</code></a> directory.</p>
+
+<h2>
+<a name="whats-new" class="anchor" href="#whats-new"><span class="octicon octicon-link"></span></a>What's new</h2>
+
+<h3>
+<a name="v11" class="anchor" href="#v11"><span class="octicon octicon-link"></span></a>v1.1</h3>
+
+<ul>
+<li>Plugin is re-worked. Bugs fixed (issue #1, #3, #6, #7). Some functionality is possible only by accessing private fields, so Xew plugin may not work in security-managed environment.</li>
+<li>Testing framework introduced. XSD in <a href="src/test/resources/com/sun/tools/xjc/addon/xew/"><code>com/sun/tools/xjc/addon/xew/</code></a> directory can be used as reference.</li>
+<li>Logging is done via <code>commons-logging</code>. Log level is configurable like this <code>mvn -Dorg.apache.commons.logging.simplelog.defaultlog=DEBUG</code>.</li>
+</ul><h3>
+<a name="v10" class="anchor" href="#v10"><span class="octicon octicon-link"></span></a>v1.0</h3>
+
+<p>The original code of Bjarne Hansen, with some fixes. </p>
+
+<h2>
+<a name="contribution" class="anchor" href="#contribution"><span class="octicon octicon-link"></span></a>Contribution</h2>
+
+<p>If you have time and desire to contribute to this project you can do it in many ways:</p>
+
+<ul>
+<li>Improve this very documentation.</li>
+<li>Implement Unit tests.</li>
+<li>Provide more samples.</li>
+</ul><h3>
+<a name="development" class="anchor" href="#development"><span class="octicon octicon-link"></span></a>Development</h3>
+
+<p>Everybody is very welcomed to send patches by email. But the best way would be:</p>
+
+<ul>
+<li>Fork the repository.</li>
+<li>Apply the <a href="#code-style">formatting rules</a> (the ones for Eclipse can be found in <a href="dist"><code>dist</code></a> folder).</li>
+<li>Create a ticket in <a href="https://github.com/dmak/jaxb-xew-plugin/issues">bugtracker</a>. If applicable attach XSD that demonstrates the problem to the issue.</li>
+<li>Create a branch referring the ticket number (<code>git branch issue-22</code>).</li>
+<li>Do the changes.</li>
+<li>Commit to your own fork, mentioning the ticket number in commit message (<code>Implemented nice feature (fixes #22)</code>). Check <a href="https://github.com/blog/831-issues-2-0-the-next-generation">here</a> the commit message syntax sugar.</li>
+<li>
+<a href="http://help.github.com/send-pull-requests/">Request for pull</a>.</li>
+</ul><p>If you provide the code in any way you automatically agree with a <a href="#license">project license</a>.</p>
+
+<h4>
+<a name="code-style" class="anchor" href="#code-style"><span class="octicon octicon-link"></span></a>Code style</h4>
+
+<ul>
+<li>There are no specific coding and naming conventions for this project except ones given in <a href="http://www.oracle.com/technetwork/java/codeconv-138413.html">Code Conventions for the Java Programming Language</a> by Sun. Use best practices and common sense.</li>
+<li>For <a href="dist/eclipse-code-formatting-rules.xml">code formatting</a> basically Eclipse build-in formatting rules were used with following changes:
+
+<ul>
+<li>Indentation → Align fields on columns: on</li>
+<li>Indentation → Tab policy: Mixed</li>
+<li>Indentation → Use spaces to indent wrapped lines: on</li>
+<li>Line Wrapping → Maximum line width: 120</li>
+<li>Line Wrapping → Default indentation for wrapped lines: 3</li>
+<li>Comments → Maximum line width for comments: 120</li>
+<li>Comments → Enable line comment formatting: off</li>
+<li>New Lines → Insert new line in empty anonymous class body: off</li>
+<li>New Lines → Insert new line in empty block: off</li>
+</ul>
+</li>
+<li>TAB is used for alignment for XML/XSD/... files. </li>
+</ul><h4>
+<a name="release-procedure" class="anchor" href="#release-procedure"><span class="octicon octicon-link"></span></a>Release procedure</h4>
+
+<ul>
+<li>Read <a href="https://docs.sonatype.org/display/Repository/Sonatype+OSS+Maven+Repository+Usage+Guide">Sonatype OSS Maven Repository Usage Guide</a> from cover to cover.</li>
+<li>
+<p>Use the following <code>settings.xml</code> for your Maven:</p>
+
+<pre><code>&lt;settings&gt;
+    &lt;!-- Optional proxy configuration (if applicable to your environment) --&gt;
+    &lt;proxies&gt;
+        &lt;proxy&gt;
+            &lt;active&gt;true&lt;/active&gt;
+            &lt;protocol&gt;http&lt;/protocol&gt;
+            &lt;host&gt;proxy&lt;/host&gt;
+            &lt;port&gt;8080&lt;/port&gt;
+            &lt;nonProxyHosts&gt;*.internal.domain&lt;/nonProxyHosts&gt;
+        &lt;/proxy&gt;
+        &lt;proxy&gt;
+            &lt;active&gt;true&lt;/active&gt;
+            &lt;protocol&gt;https&lt;/protocol&gt;
+            &lt;host&gt;proxy&lt;/host&gt;
+            &lt;port&gt;8080&lt;/port&gt;
+            &lt;nonProxyHosts&gt;*.internal.domain&lt;/nonProxyHosts&gt;
+        &lt;/proxy&gt;
+    &lt;/proxies&gt;
+
+    &lt;servers&gt;
+        &lt;server&gt;
+            &lt;id&gt;sonatype-nexus-snapshots&lt;/id&gt;
+            &lt;username&gt;...sonatype_user...&lt;/username&gt;
+            &lt;password&gt;...sonatype_password...&lt;/password&gt;
+        &lt;/server&gt;
+        &lt;server&gt;
+            &lt;id&gt;sonatype-nexus-staging&lt;/id&gt;
+            &lt;username&gt;...sonatype_user...&lt;/username&gt;
+            &lt;password&gt;...sonatype_password...&lt;/password&gt;
+        &lt;/server&gt;
+    &lt;/servers&gt;
+
+    &lt;profiles&gt;
+        &lt;profile&gt;
+            &lt;id&gt;gpg&lt;/id&gt;
+            &lt;properties&gt;
+                &lt;gpg.passphrase&gt;...passphrase...&lt;/gpg.passphrase&gt;
+            &lt;/properties&gt;
+        &lt;/profile&gt;
+    &lt;/profiles&gt;
+&lt;/settings&gt;
+</code></pre>
+</li>
+<li><p>Make sure you have git &gt;= v1.7.10 installed, otherwise you may face <a href="https://bugs.eclipse.org/bugs/show_bug.cgi?id=341221">this bug#341221</a>.</p></li>
+<li><p>You need to put JAXB API &gt;= v2.2.3 to <code>endorsed</code> directory of JDK which is used to build the project. Otherwise build will fail with <code>java.lang.NoSuchMethodError: javax.xml.bind.annotation.XmlElementWrapper.required()Z</code>.</p></li>
+<li>
+<p>For Hudson freestyle job specify:</p>
+
+<ul>
+<li>Pre-release step <code>git checkout master; git reset --hard origin/master</code> (see <a href="http://stackoverflow.com/questions/1877027">Can't get automated release working with Hudson + Git + Maven Release Plugin</a> for more details about the problem).</li>
+<li>Next step (release): <code>release:prepare release:perform -Pstage-release,gpg -Dresume=false -Dusername=&lt;github_user&gt; -Dpassword=&lt;github_password&gt;</code>
+</li>
+</ul>
+</li>
+</ul><h3>
+<a name="algorithm-description" class="anchor" href="#algorithm-description"><span class="octicon octicon-link"></span></a>Algorithm description</h3>
+
+<p>The plugin flow consists of the following parts:</p>
+
+<ul>
+<li>Parse arguments.</li>
+<li>Find classes which are candidates for removal:
+
+<ol>
+<li>The candidate class should not extend any other class (as the total number of properties will be more than 1)</li>
+<li>The candidate class should have exactly one non-static property.</li>
+<li>This property should be a collection.</li>
+<li>This collection should have exactly one parametrisation type.</li>
+<li>This parametrisation type should not be <code>java.lang.Object</code> / <code>java.io.Serializable</code>.</li>
+</ol>
+</li>
+<li>Visit all classes again to check if the candidate is not eligible for removal:
+
+<ol>
+<li>If there are classes that extend the candidate</li>
+<li>If there are class fields, that refer the candidate by e.g. <code>@XmlElementRef</code> annotation</li>
+</ol>
+</li>
+<li>Visit all classes again to replace the property having the candidate class type with collection plus <code>@XmlElementWrapper</code> annotation. On this step getters/setters are update and ObjectFactory methods are corrected. Also lazy initialization policy is applied.</li>
+<li>Candidates which are still marked for removal are finally removed (and ObjectFactory is updated accordingly).</li>
+</ul><p>There are many pitfalls in JAXB Code Model API, which are forcing the developer to use dirty tricks (like accessing private fields) in order to implement the manipulation of code model. Among others:</p>
+
+<ul>
+<li>
+<a href="http://java.net/jira/browse/JAXB-784">JAXB-784</a> is about NPE in <code>JAnnotationUse#getAnnotationMembers()</code> method.</li>
+<li>
+<a href="https://java.net/jira/browse/JAXB-884">JAXB-884</a> is about ClassCastException in <code>JAnnotationArrayMember#annotations()</code> method. </li>
+<li>
+<a href="https://java.net/jira/browse/JAXB-878">JAXB-878</a> and <a href="https://java.net/jira/browse/JAXB-879">JAXB-879</a> describe the lack of public getters for class fields.</li>
+<li>
+<a href="https://java.net/jira/browse/JAXB-957">JAXB-957</a> mentions what need to be added to make it possible for the inner class to be moved to another class or package. </li>
+<li>
+<a href="http://java.net/jira/browse/JAXB-883">JAXB-883</a> does not allow to learn if "simpleMode" setting is enabled, which in its turn controls plural form for collection property names. There are however some more difficulties to overcome.</li>
+</ul><h2>
+<a name="authors" class="anchor" href="#authors"><span class="octicon octicon-link"></span></a>Authors</h2>
+
+<p>Original code by <a href="http://www.conspicio.dk/blog/bjarne/jaxb-xmlelementwrapper-plugin">Bjarne Hansen</a>. Many thanks to committers:</p>
+
+<ul>
+<li><a href="http://www.linkedin.com/in/dkatsubo">Dmitry Katsubo</a></li>
+<li><a href="https://github.com/wumpz/">Tobias Warneke</a></li>
+<li><a href="https://github.com/davidfmatheson/">David Matheson</a></li>
+<li><a href="https://github.com/sebisteiner/">Sebastian Steiner</a></li>
+<li><a href="https://github.com/colin-yell/">Colin Fairless</a></li>
+<li><a href="https://github.com/patrickcrocker/">Patrick Crocker</a></li>
+<li>and others...</li>
+</ul><h2>
+<a name="license" class="anchor" href="#license"><span class="octicon octicon-link"></span></a>License</h2>
+
+<p>The whole project is licensed under <a href="http://www.gnu.org/licenses/lgpl-3.0.html">LGPLv3</a> (or any later version).</p>
+      </section>
+      <footer>
+        <p>This project is maintained by <a href="https://github.com/wumpz">wumpz</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    </div>
+    <script src="javascripts/scale.fix.js"></script>
+    
+  </body>
+</html>
