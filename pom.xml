@@ -5,13 +5,13 @@
 
 	<groupId>com.github.jaxb-xew-plugin</groupId>
 	<artifactId>jaxb-xew-plugin</artifactId>
+	<version>1.9-SNAPSHOT</version>
 	<packaging>jar</packaging>
-	<version>1.2-SNAPSHOT</version>
 
 	<parent>
 		<groupId>org.sonatype.oss</groupId>
 		<artifactId>oss-parent</artifactId>
-		<version>7</version>
+		<version>9</version>
 	</parent>
 
 	<name>JAXB @XmlElementWrapper Plugin</name>
@@ -23,13 +23,18 @@
 		<url>https://github.com/dmak/jaxb-xew-plugin</url>
 		<connection>scm:git:https://github.com/dmak/jaxb-xew-plugin.git</connection>
 		<developerConnection>scm:git:https://dmak@github.com/dmak/jaxb-xew-plugin.git</developerConnection>
-	  <tag>HEAD</tag>
-  </scm>
+		<tag>HEAD</tag>
+	</scm>
 
 	<issueManagement>
 		<system>GitHub</system>
 		<url>https://github.com/dmak/jaxb-xew-plugin/issues</url>
 	</issueManagement>
+
+	<ciManagement>
+		<system>Jenkins</system>
+		<url>https://dmak.ci.cloudbees.com/job/jaxb-xew-plugin/</url>
+	</ciManagement>
 
 	<licenses>
 		<license>
@@ -39,29 +44,85 @@
 		</license>
 	</licenses>
 
+	<properties>
+		<jaxb.version>2.2.11</jaxb.version>
+	</properties>
+
 	<profiles>
 		<profile>
 			<id>stage-release</id>
 
 			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.sonatype.plugins</groupId>
+						<artifactId>nexus-staging-maven-plugin</artifactId>
+					</plugin>
+				</plugins>
+
 				<pluginManagement>
 					<plugins>
 						<plugin>
-							<groupId>org.codehaus.mojo</groupId>
-							<artifactId>versions-maven-plugin</artifactId>
-							<version>2.0</version>
+							<artifactId>maven-release-plugin</artifactId>
+							<version>2.5.2</version>
 							<configuration>
-								<generateBackupPoms>false</generateBackupPoms>
+								<tagNameFormat>release-@{project.version}</tagNameFormat>
+								<preparationGoals>clean verify</preparationGoals>
 							</configuration>
 						</plugin>
 						<plugin>
-							<artifactId>maven-release-plugin</artifactId>
-							<version>2.3.2</version>
-							
+							<artifactId>maven-deploy-plugin</artifactId>
+							<version>2.8.2</version>
 							<configuration>
-								<autoVersionSubmodules>true</autoVersionSubmodules>
-								<tagNameFormat>release-@{project.version}</tagNameFormat>
-								<preparationGoals>clean verify</preparationGoals>
+								<retryFailedDeploymentCount>3</retryFailedDeploymentCount>
+							</configuration>
+						</plugin>
+						<plugin>
+							<groupId>org.sonatype.plugins</groupId>
+							<artifactId>nexus-staging-maven-plugin</artifactId>
+							<version>1.6.7</version>
+							<extensions>true</extensions>
+							<configuration>
+								<serverId>sonatype-nexus-staging</serverId>
+								<nexusUrl>https://oss.sonatype.org/</nexusUrl>
+								<autoReleaseAfterClose>true</autoReleaseAfterClose>
+							</configuration>
+						</plugin>
+					</plugins>
+				</pluginManagement>
+			</build>
+		</profile>
+		<profile>
+			<id>jdk-tools-dependency</id>
+			<activation>
+				<file>
+					<exists>${java.home}/../lib/tools.jar</exists>
+				</file>
+			</activation>
+			<dependencies>
+				<dependency>
+					<groupId>com.sun</groupId>
+					<artifactId>tools</artifactId>
+					<version>1.6.0</version>
+					<scope>system</scope>
+					<systemPath>${java.home}/../lib/tools.jar</systemPath>
+				</dependency>
+			</dependencies>
+		</profile>
+		<profile>
+			<id>jdk-specific-test</id>
+			<activation>
+				<jdk>1.8</jdk>
+			</activation>
+			<build>
+				<pluginManagement>
+					<plugins>
+						<plugin>
+							<artifactId>maven-surefire-plugin</artifactId>
+							<configuration>
+								<excludes>
+									<exclude>**/*SpecificTest.java</exclude>
+								</excludes>
 							</configuration>
 						</plugin>
 					</plugins>
@@ -82,7 +143,6 @@
 			<name>Dmitry Katsubo</name>
 			<email>dmitry.katsubo@gmail.com</email>
 			<url>http://www.linkedin.com/in/dkatsubo</url>
-			<organizationUrl>http://www.epo.org/</organizationUrl>
 			<roles>
 				<role>developer</role>
 			</roles>
@@ -91,14 +151,29 @@
 
 	<dependencies>
 		<dependency>
-			<groupId>com.sun.xml.ws</groupId>
-			<artifactId>jaxws-tools</artifactId>
-			<version>2.2.5</version>
+			<groupId>com.sun.xml.bind</groupId>
+			<artifactId>jaxb-xjc</artifactId>
+			<version>${jaxb.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.sun.xml.bind</groupId>
+			<artifactId>jaxb-core</artifactId>
+			<version>${jaxb.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>commons-logging</groupId>
 			<artifactId>commons-logging</artifactId>
 			<version>1.1.1</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-lang3</artifactId>
+			<version>3.4</version>
+		</dependency>
+		<dependency>
+			<groupId>org.jvnet.jaxb2_commons</groupId>
+			<artifactId>jaxb2-basics-tools</artifactId>
+			<version>0.6.5</version>
 		</dependency>
 
 		<dependency>
@@ -108,9 +183,15 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-			<groupId>org.apache.commons</groupId>
-			<artifactId>commons-lang3</artifactId>
-			<version>3.1</version>
+			<groupId>xmlunit</groupId>
+			<artifactId>xmlunit</artifactId>
+			<version>1.5</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.sun.xml.bind</groupId>
+			<artifactId>jaxb-impl</artifactId>
+			<version>${jaxb.version}</version>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
@@ -119,18 +200,21 @@
 			<version>2.4</version>
 			<scope>test</scope>
 		</dependency>
-	</dependencies>
+   	</dependencies>
 
 	<build>
 		<pluginManagement>
 			<plugins>
 				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-compiler-plugin</artifactId>
 					<configuration>
 						<source>1.5</source>
 						<target>1.5</target>
 					</configuration>
+				</plugin>
+				<plugin>
+					<artifactId>maven-surefire-plugin</artifactId>
+					<version>2.19.1</version>
 				</plugin>
 			</plugins>
 		</pluginManagement>

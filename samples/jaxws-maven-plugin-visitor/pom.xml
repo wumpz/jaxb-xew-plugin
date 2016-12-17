@@ -1,0 +1,64 @@
+<?xml version="1.0"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>com.github.jaxb-xew-plugin.sample</groupId>
+	<artifactId>jaxws-maven-plugin-visitor</artifactId>
+	<version>1.0-SNAPSHOT</version>
+	<packaging>jar</packaging>
+
+	<name>jaxws-maven-plugin with jaxb-xew-plugin + jaxb-visitor and classpath voodoo</name>
+
+	<parent>
+		<groupId>com.github.jaxb-xew-plugin.sample</groupId>
+		<artifactId>sample-parent</artifactId>
+		<version>1.0-SNAPSHOT</version>
+	</parent>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.jvnet.jax-ws-commons</groupId>
+				<artifactId>jaxws-maven-plugin</artifactId>
+				<version>2.3.1-b03</version>
+				<executions>
+					<execution>
+						<phase>generate-sources</phase>
+						<goals>
+							<goal>wsimport</goal>
+						</goals>
+						<configuration>
+							<xjcArgs>
+								<xjcArg>-debug</xjcArg>
+								<xjcArg>-no-header</xjcArg>
+								<xjcArg>-Xxew</xjcArg>
+								<xjcArg>-Xxew:instantiate lazy</xjcArg>
+								<xjcArg>-Xvisitor</xjcArg>
+							</xjcArgs>
+
+							<sourceDestDir>${project.build.directory}/generated-sources/jaxws</sourceDestDir>
+							<wsdlDirectory>wsdl</wsdlDirectory>
+
+							<extension>true</extension>
+							<keep>true</keep>
+						</configuration>
+					</execution>
+				</executions>
+				<dependencies>
+					<dependency>
+						<groupId>com.github.jaxb-xew-plugin</groupId>
+						<artifactId>jaxb-xew-plugin</artifactId>
+						<version>${jaxb-xew-plugin.version}</version>
+					</dependency>
+					<dependency>
+						<groupId>com.massfords</groupId>
+						<artifactId>jaxb-visitor</artifactId>
+						<!-- Versions >= 2.2 will need additional classpath exclusions for org.glassfish.jaxb:* artifacts. -->
+						<version>2.1</version>
+					</dependency>
+				</dependencies>
+			</plugin>
+		</plugins>
+	</build>
+</project>

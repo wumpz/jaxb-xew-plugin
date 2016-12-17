@@ -5,15 +5,24 @@
 
 	<groupId>com.github.jaxb-xew-plugin.sample</groupId>
 	<artifactId>maven-jaxb2-plugin</artifactId>
+	<version>1.0-SNAPSHOT</version>
 	<packaging>jar</packaging>
-	<version>1.0.0-SNAPSHOT</version>
+
+	<name>maven-jaxb2-plugin with jaxb-xew-plugin + jaxb-equals + jaxb-hashCode</name>
+
+	<parent>
+		<groupId>com.github.jaxb-xew-plugin.sample</groupId>
+		<artifactId>sample-parent</artifactId>
+		<version>1.0-SNAPSHOT</version>
+	</parent>
 
 	<build>
 		<plugins>
 			<plugin>
 				<groupId>org.jvnet.jaxb2.maven2</groupId>
 				<artifactId>maven-jaxb2-plugin</artifactId>
-				<version>0.8.1</version>
+				<!-- See https://github.com/dmak/jaxb-xew-plugin/issues/50#issuecomment-248238663 about how to solve the issue with maven-jaxb2-plugin >= v0.12.1 + jaxb-xew-plugin <= v1.7 -->
+				<version>0.13.1</version>
 				<executions>
 					<execution>
 						<phase>generate-sources</phase>
@@ -26,25 +35,40 @@
 							<schemaDirectory>xsd</schemaDirectory>
 							<removeOldOutput>false</removeOldOutput>
 							<episode>false</episode>
+							<noFileHeader>true</noFileHeader>
 
 							<extension>true</extension>
 							<args>
-								<arg>-no-header</arg>
 								<arg>-Xxew</arg>
 								<arg>-Xxew:instantiate lazy</arg>
-								<arg>-Xxew:delete</arg>
+								<arg>-Xequals</arg>
+								<arg>-XhashCode</arg>
 							</args>
 							<plugins>
 								<plugin>
 									<groupId>com.github.jaxb-xew-plugin</groupId>
 									<artifactId>jaxb-xew-plugin</artifactId>
-									<version>1.0</version>
+									<version>${jaxb-xew-plugin.version}</version>
+								</plugin>
+								<plugin>
+									<groupId>org.jvnet.jaxb2_commons</groupId>
+									<artifactId>jaxb2-basics</artifactId>
+									<version>${jaxb2-basics.version}</version>
 								</plugin>
 							</plugins>
 						</configuration>
 					</execution>
 				</executions>
 			</plugin>
-        </plugins>
-    </build>
+		</plugins>
+	</build>
+
+	<dependencies>
+		<!-- Needs to be duplicated as dependency as generated classes refer helper methods from this package. -->
+		<dependency>
+			<groupId>org.jvnet.jaxb2_commons</groupId>
+			<artifactId>jaxb2-basics</artifactId>
+			<version>${jaxb2-basics.version}</version>
+		</dependency>
+	</dependencies>
 </project>

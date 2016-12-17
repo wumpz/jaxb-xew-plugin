@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xsd:schema
+	jaxb:version="2.0"
+	targetNamespace="http://example.com/scope"
+	xmlns:x="http://example.com/extra"
+	xmlns:jaxb="http://java.sun.com/xml/ns/jaxb"
+	xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+	elementFormDefault="qualified"
+>
+	<xsd:annotation>
+		<xsd:appinfo>
+			<jaxb:schemaBindings>
+				<jaxb:package name="element_scoped" />
+			</jaxb:schemaBindings>
+		</xsd:appinfo>
+	</xsd:annotation>
+
+	<xsd:import schemaLocation="element-scoped-extra.xsd" namespace="http://example.com/extra" />
+
+	<!--
+		Special case when element with same name ("second-name") exists in two different namespaces, thus
+		ObjectFactory should have two factory methods annotated with @XmlElementDecl with different namespaces.
+	-->
+	<xsd:element name="return">
+		<xsd:complexType>
+			<xsd:sequence minOccurs="0">
+				<xsd:element name="users">
+					<xsd:complexType>
+						<xsd:sequence maxOccurs="unbounded">
+							<xsd:element name="name" type="xsd:string" />
+							<xsd:element name="age" type="xsd:string" />
+						</xsd:sequence>
+					</xsd:complexType>
+				</xsd:element>
+				<xsd:element ref="x:age" />
+			</xsd:sequence>
+		</xsd:complexType>
+	</xsd:element>
+</xsd:schema>
